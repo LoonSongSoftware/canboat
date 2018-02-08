@@ -21,8 +21,8 @@ along with CANboat.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define UINT16_OUT_OF_RANGE (MAX_UINT16 - 1)
 #define UINT16_UNKNOWN (MAX_UINT16)
@@ -92,7 +92,7 @@ typedef struct
 # define RES_NOTUSED (0)
 # define RES_RADIANS (1e-4)
 # define RES_ROTATION (1e-3/32.0)
-# define RES_HIRES_ROTATION ((1e-3/32.0) * 0.0001)
+# define RES_HIRES_ROTATION (1e-6/32.0)
 # define RES_ASCII (-1.0)
 # define RES_LATITUDE (-2.0)
 # define RES_LONGITUDE (-3.0)
@@ -544,6 +544,144 @@ static const Resolution types[MAX_RESOLUTION_LOOKUP] =
     ",3=Chart Plotter" \
     ",4=AIS" )
 
+#define LOOKUP_ENTERTAINMENT_ZONE ( \
+    ",0=All zones" \
+    ",1=Zone 1" \
+    ",2=Zone 2" \
+    ",3=Zone 3" \
+    ",4=Zone 4" )
+
+#define LOOKUP_ENTERTAINMENT_SOURCE ( \
+    ",0=Vessel alarm" \
+    ",1=AM" \
+    ",2=FM" \
+    ",3=Weather" \
+    ",4=DAB" \
+    ",5=Aux" \
+    ",6=USB" \
+    ",7=CD" \
+    ",8=MP3" \
+    ",9=Apple iOS" \
+    ",10=Android" \
+    ",11=Bluetooth" \
+    ",12=Sirius XM" \
+    ",13=Pandora" \
+    ",14=Spotify" \
+    ",15=Slacker" \
+    ",16=Songza" \
+    ",17=Apple Radio" \
+    ",18=Last FM" \
+    ",19=Ethernet" \
+    ",20=Video MP4" \
+    ",21=Video DVD" \
+    ",22=Video BluRay" \
+    ",23=HDMI" \
+    ",24=Video" )
+
+#define LOOKUP_ENTERTAINMENT_PLAY_STATUS ( \
+    ",0=Play" \
+    ",1=Pause" \
+    ",2=Stop" \
+    ",3=FF (1x)" \
+    ",4=FF (2x)" \
+    ",5=FF (3x)" \
+    ",6=FF (4x)" \
+    ",7=RW (1x)" \
+    ",8=RW (2x)" \
+    ",9=RW (3x)" \
+    ",10=RW (4x)" \
+    ",11=Skip ahead" \
+    ",12=Skip back" \
+    ",13=Jog ahead" \
+    ",14=Jog back" \
+    ",15=Seek up" \
+    ",16=Seek down" \
+    ",17=Scan up" \
+    ",18=Scan down" \
+    ",19=Tune up" \
+    ",20=Tune down" \
+    ",21=Slow motion (.75x)" \
+    ",22=Slow motion (.5x)" \
+    ",23=Slow motion (.25x)" \
+    ",24=Slow motion (.125x)" \
+    ",25=Source renaming" )
+
+#define LOOKUP_ENTERTAINMENT_REPEAT_STATUS ( \
+    ",0=Off" \
+    ",1=One" \
+    ",2=All" )
+
+#define LOOKUP_ENTERTAINMENT_SHUFFLE_STATUS ( \
+    ",0=Off" \
+    ",1=Play queue" \
+    ",2=All" )
+
+#define LOOKUP_ENTERTAINMENT_LIKE_STATUS ( \
+    ",0=None" \
+    ",1=Thumbs up" \
+    ",2=Thumbs down" )
+
+#define LOOKUP_ENTERTAINMENT_TYPE ( \
+    ",0=File" \
+    ",1=Playlist Name"\
+    ",2=Genre Name"\
+    ",3=Album Name"\
+    ",4=Artist Name"\
+    ",5=Track Name"\
+    ",6=Station Name"\
+    ",7=Station Number"\
+    ",8=Favourite Number"\
+    ",9=Play Queue"\
+    ",10=Content Info" )
+
+#define LOOKUP_ENTERTAINMENT_GROUP ( \
+    ",0=File" \
+    ",1=Playlist Name"\
+    ",2=Genre Name"\
+    ",3=Album Name"\
+    ",4=Artist Name"\
+    ",5=Track Name"\
+    ",6=Station Name"\
+    ",7=Station Number"\
+    ",8=Favourite Number"\
+    ",9=Play Queue"\
+   ",10=Content Info" )
+
+#define LOOKUP_ENTERTAINMENT_CHANNEL ( \
+    ",0=All channels" \
+    ",1=Stereo full range" \
+    ",2=Stereo front"\
+    ",3=Stereo back" \
+    ",4=Stereo surround" \
+    ",5=Center" \
+    ",6=Subwoofer" \
+    ",7=Front left" \
+    ",8=Front right" \
+    ",9=Back left" \
+    ",10=Back right" \
+    ",11=Surround left" \
+    ",12=Surround right" )
+
+#define LOOKUP_ENTERTAINMENT_EQ ( \
+    ",0=Flat" \
+    ",1=Rock" \
+    ",2=Hall" \
+    ",3=Jazz" \
+    ",4=Pop" \
+    ",5=Live" \
+    ",6=Classic" \
+    ",7=Vocal" \
+    ",8=Arena" \
+    ",9=Cinema" \
+    ",10=Custom" )
+
+#define LOOKUP_ENTERTAINMENT_FILTER ( \
+    ",0=Full range" \
+    ",1=High pass" \
+    ",2=Low pass" \
+    ",3=Band pass" \
+    ",4=Notch filter" )
+
 #define ACTISENSE_BEM 0x40000 /* Actisense specific fake PGNs */
 
 typedef struct
@@ -553,7 +691,7 @@ typedef struct
   bool       known;             /* Are we pretty sure we've got all fields with correct definitions? */
   uint32_t   size;              /* (Minimal) size of this PGN. Helps to determine fast/single frame and initial malloc */
   uint32_t   repeatingFields;   /* How many fields at the end repeat until the PGN is exhausted? */
-  Field      fieldList[28];     /* Note fixed # of fields; increase if needed. RepeatingFields support means this is enough for now. */
+  Field      fieldList[30];     /* Note fixed # of fields; increase if needed. RepeatingFields support means this is enough for now. */
   uint32_t   fieldCount;        /* Filled by C, no need to set in initializers. */
   char     * camelDescription;  /* Filled by C, no need to set in initializers. */
   bool       unknownPgn;        /* true = this is a catch-all for unknown PGNs */
@@ -739,6 +877,16 @@ Pgn pgnList[] =
   , { "PID", BYTES(1), 1, false, 0, "" }
   , { "Variant", BYTES(1), 1, false, 0, "" }
   , { "Beep Control", BYTES(1), 1, false, 0, "" }
+  }
+}
+
+,
+{ "Victron Battery Register", 61184, false, 0x08, 0,
+  { { "Manufacturer Code", 11, RES_MANUFACTURER, false, "=358", "Victron" }
+  , { "Reserved", 2, RES_NOTUSED, false, 0, "" }
+  , { "Industry Code", 3, RES_LOOKUP, false, "=4", "Marine Industry" }
+  , { "Register Id", BYTES(2), 1, false, 0, "" }
+  , { "Payload", BYTES(4), 1, false, 0, "" }
   }
 }
 
@@ -1084,8 +1232,7 @@ Pgn pgnList[] =
   { { "Manufacturer Code", 11, RES_MANUFACTURER, false, "=140", "Lowrance" }
   , { "Reserved", 2, RES_NOTUSED, false, 0, "" }
   , { "Industry Code", 3, RES_LOOKUP, false, "=4", "Marine Industry" }
-  , { "Temperature Instance", 4, 1, false, 0, "" }
-  , { "Temperature Source", 4, 1, false, 0, "" }
+  , { "Temperature Source", BYTES(1), RES_LOOKUP, false, LOOKUP_TEMPERATURE_SOURCE, "" }
   , { "Actual Temperature", BYTES(2), RES_TEMPERATURE, false, "K", "" }
   , { 0 }
   }
@@ -1188,7 +1335,7 @@ Pgn pgnList[] =
   { { "Manufacturer Code", 11, RES_MANUFACTURER, false, "=1851", "Raymarine" }
   , { "Reserved", 2, RES_NOTUSED, false, 0, "" }
   , { "Industry Code", 3, RES_LOOKUP, false, "=4", "Marine Industry" }
-  , { "Wind Datum", BYTES(2), RES_RADIANS, false, "rad", "" }    
+  , { "Wind Datum", BYTES(2), RES_RADIANS, false, "rad", "" }
   , { "Rolling Average Wind Angle", BYTES(2), RES_RADIANS, false, "rad", "" }
   , { "Reserved", BYTES(2), 1, false, 0, "" }
   }
@@ -1199,7 +1346,7 @@ Pgn pgnList[] =
   , { "Reserved", 2, RES_NOTUSED, false, 0, "" }
   , { "Industry Code", 3, RES_LOOKUP, false, "=4", "Marine Industry" }
   , { "SID", BYTES(1), RES_BINARY, false, 0, "" }
-  , { "Heading True", BYTES(2), RES_RADIANS, false, "rad", "" }    
+  , { "Heading True", BYTES(2), RES_RADIANS, false, "rad", "" }
   , { "Heading Magnetic", BYTES(2), RES_RADIANS, false, "rad", "" }
   , { "Reserved", BYTES(1), 1, false, 0, "" }
   }
@@ -1262,7 +1409,7 @@ Pgn pgnList[] =
   , { "Pilot Mode", BYTES(1), RES_BINARY, false, 0, "" }
   , { "Sub Mode", BYTES(1), RES_BINARY, false, 0, "" }
   , { "Pilot Mode Data", BYTES(1), RES_BINARY, false, 0, "" }
-  , { "Reserved", BYTES(3), RES_BINARY, false, 0, "" }    
+  , { "Reserved", BYTES(3), RES_BINARY, false, 0, "" }
   }
 }
   /* http://www.airmartechnology.com/uploads/installguide/DST200UserlManual.pdf */
@@ -1447,6 +1594,34 @@ Pgn pgnList[] =
 }
 
 /* proprietary PDU1 (addressed) fast-packet range 0x1EF00 to 0x1EFFF (126720 - 126975) */
+
+  /* Seatalk1 code from http://thomasknauf.de/rap/seatalk2.htm */
+,
+{ "Seatalk1: Keystroke", 126720, false, 21, 0,
+  { { "Manufacturer Code", 11, RES_MANUFACTURER, false, "=1851", "Raymarine" }
+  , { "Reserved", 2, RES_NOTUSED, false, 0, "" }
+  , { "Industry Code", 3, RES_LOOKUP, false, "=4", "Marine Industry" }
+  , { "Proprietary ID", BYTES(2), RES_INTEGER, false, "=33264", "0x81f0" }
+  , { "command", BYTES(1), RES_BINARY, false, "=134", "0x86" }
+  , { "device", BYTES(1), RES_LOOKUP, false, ",33=S100", "" }
+  , { "key", BYTES(2), RES_LOOKUP, false, ",64005=-1,63495=+1,64770=Standby,65025=Auto,63240=+10,63750=-10,56865=-1 and -10,56610=+1 and +10", "" }
+  , { "Unknown data", BYTES(14), RES_BINARY, false, 0, "" } // xx xx xx xx xx c1 c2 cd 64 80 d3 42 f1 c8 (if xx=0xff =>working or xx xx xx xx xx = [A5 FF FF FF FF | 00 00 00 FF FF | FF FF FF FF FF | 42 00 F8 02 05])
+  , { 0 }
+  }
+}
+
+,
+{ "Seatalk1: Device Indentification", 126720, false, 8, 0,
+  { { "Manufacturer Code", 11, RES_MANUFACTURER, false, "=1851", "Raymarine" }
+  , { "Reserved", 2, RES_NOTUSED, false, 0, "" }
+  , { "Industry Code", 3, RES_LOOKUP, false, "=4", "Marine Industry" }
+  , { "Proprietary ID", BYTES(2), RES_INTEGER, false, "=33264", "0x81f0" }
+  , { "command", BYTES(1), RES_BINARY, false, "=144", "0x90" }
+  , { "Reserved", BYTES(1), RES_NOTUSED, false, 0, "" } // 0x00
+  , { "device", BYTES(1), RES_LOOKUP, false, ",3=S100,5=Course Computer", "" }
+  , { 0 }
+  }
+}
 
   /* http://www.airmartechnology.com/uploads/installguide/PB200UserManual.pdf */
 ,
@@ -1918,11 +2093,37 @@ Pgn pgnList[] =
 ,
 { "Binary Switch Bank Status", 127501, false, 8, 1,
   { { "Indicator Bank Instance", BYTES(1), 1, false, 0, "" }
-  , { "Indicator", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator1", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator2", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator3", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator4", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator5", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator6", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator7", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator8", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator9", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator10", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator11", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator12", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator13", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator14", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator15", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator16", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator17", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator18", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator19", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator20", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator21", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator22", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator23", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator24", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator25", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator26", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator27", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
+  , { "Indicator28", 2, RES_LOOKUP, false, ",0=Off,1=On,2=Failed", "" }
   , { 0 }
   }
 }
-
 ,
 { "Switch Bank Control", 127502, false, 8, 1,
   { { "Switch Bank Instance", BYTES(1), 1, false, 0, "" }
@@ -2107,7 +2308,8 @@ Pgn pgnList[] =
   { { "SID", BYTES(1), 1, false, 0, "" }
   , { "Speed Water Referenced", BYTES(2), 0.01, false, "m/s", "" }
   , { "Speed Ground Referenced", BYTES(2), 0.01, false, "m/s", "" }
-  , { "Speed Water Referenced Type", 4, RES_LOOKUP, false, LOOKUP_WATER_REFERENCE, "" }
+  , { "Speed Water Referenced Type", BYTES(1), RES_LOOKUP, false, LOOKUP_WATER_REFERENCE, "" }
+  , { "Speed Direction", 4, 1, false, 0, "" }
   , { 0 }
   }
 }
@@ -2118,6 +2320,7 @@ Pgn pgnList[] =
   { { "SID", BYTES(1), 1, false, 0, "" }
   , { "Depth", BYTES(4), 0.01, false, "m", "Depth below transducer" }
   , { "Offset", BYTES(2), 0.001, true, "m", "Distance between transducer and surface (positive) or keel (negative)" }
+  , { "Range", BYTES(1), 10, false, "m", "Max measurement range" }
   , { 0 }
   }
 }
@@ -2677,7 +2880,7 @@ Pgn pgnList[] =
 }
 
 ,
-{ "AIS UTC and Date Report", 129793, false, 8, 0,
+{ "AIS UTC and Date Report", 129793, false, 0x1a, 0,
   { { "Message ID", 6, 1, false, 0, "" }
   , { "Repeat Indicator", 2, RES_LOOKUP, false, LOOKUP_REPEAT_INDICATOR, "" }
   , { "User ID", BYTES(4), RES_INTEGER, false, "MMSI", "" }
@@ -3455,6 +3658,90 @@ Pgn pgnList[] =
   }
 }
 
+/* https://www.nmea.org/Assets/20160715%20corrigenda%20entertainment%20pgns%20.pdf */
+
+,
+{ "Library Data File", 130570, false, 233, 0,
+  { { "Source", 8, RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_SOURCE, "" }
+  , { "Number", BYTES(1), RES_INTEGER, false, 0, "Source number per type" }
+  , { "ID", BYTES(4), RES_INTEGER, false, 0, "Unique file ID" }
+  , { "Type", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_TYPE, "" }
+  , { "Name", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  , { "Track", BYTES(2), RES_INTEGER, false, 0, "" }
+  , { "Station", BYTES(2), RES_INTEGER, false, 0, "" }
+  , { "Favorite", BYTES(1), RES_INTEGER, false, 0, "" }
+  , { "Radio frequency", BYTES(4), 10., false, "Hz", "" }
+  , { "HD Frequency", BYTES(1), RES_INTEGER, false, 0, "" }
+  , { "Zone", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_ZONE, "" }
+  , { "In play queue", 2, RES_LOOKUP, false, LOOKUP_YES_NO, "" }
+  , { "Lock status", 2, RES_LOOKUP, false, ",0=Unlocked,1=Locked", "Sirius XM only" }
+  , { "Reserved", 4, RES_BINARY, false, 0, "Reserved" }
+  , { "Artist", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  , { "Album", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  , { "Station", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  }
+}
+
+,
+{ "Library Data Group", 130571, false, 233, 2,
+  { { "Source", 8, RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_SOURCE, "" }
+  , { "Number", BYTES(1), RES_INTEGER, false, 0, "Source number per type" }
+  , { "Zone", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_ZONE, "" }
+  , { "Group ID", BYTES(4), RES_INTEGER, false, 0, "Unique group ID" }
+  , { "ID offset", BYTES(2), RES_INTEGER, false, 0, "First ID in this PGN" }
+  , { "ID count", BYTES(2), RES_INTEGER, false, 0, "Number of IDs in this PGN" }
+  , { "Total ID count", BYTES(2), RES_INTEGER, false, 0, "Total IDs in group" }
+  , { "ID type", BYTES(1), RES_LOOKUP, false, ",0=Group,1=File,2=Encrypted group,3=Encrypted file", "" }
+  , { "ID", BYTES(4), RES_INTEGER, false, 0, "" }
+  , { "Name", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  // TODO: Add support for extra fields *after* the repeating fields.
+  // The NMEA, in all its wisdom, suddenly feels a repeating field PGN can act to different rules. Sigh.
+  // , { "Artist", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  }
+}
+
+,
+{ "Library Data Search", 130572, false, 233, 0,
+  { { "Source", 8, RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_SOURCE, "" }
+  , { "Number", BYTES(1), RES_INTEGER, false, 0, "Source number per type" }
+  , { "Group ID", BYTES(4), RES_INTEGER, false, 0, "Unique group ID" }
+  , { "Group type 1", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_GROUP, "" }
+  , { "Group name 1", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  , { "Group type 2", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_GROUP, "" }
+  , { "Group name 2", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  , { "Group type 3", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_GROUP, "" }
+  , { "Group name 3", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  }
+}
+
+,
+{ "Supported Source Data", 130573, false, 233, 10,
+  { { "ID offset", BYTES(2), RES_INTEGER, false, 0, "First ID in this PGN" }
+  , { "ID count", BYTES(2), RES_INTEGER, false, 0, "Number of IDs in this PGN" }
+  , { "Total ID count", BYTES(2), RES_INTEGER, false, 0, "Total IDs in group" }
+  , { "ID", BYTES(1), RES_INTEGER, false, 0, "Source ID" }
+  , { "Source", 8, RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_SOURCE, "" }
+  , { "Number", BYTES(1), RES_INTEGER, false, 0, "Source number per type" }
+  , { "Name", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  , { "Play support", BYTES(2), RES_BITFIELD, false, LOOKUP_ENTERTAINMENT_PLAY_STATUS, "" }
+  , { "Browse support", BYTES(2), RES_BITFIELD, false, LOOKUP_ENTERTAINMENT_GROUP, "" }
+  , { "Thumbs support", 2, RES_LOOKUP, false, LOOKUP_YES_NO, "" }
+  , { "Connected", 2, RES_LOOKUP, false, LOOKUP_YES_NO, "" }
+  , { "Repeat support", 2, RES_BITFIELD, false, ",1=Song,2=Play Queue", "" }
+  , { "Shuffle support", 2, RES_BITFIELD, false, ",1=Play Queue,2=All", "" }
+  }
+}
+
+,
+{ "Supported Zone Data", 130574, false, 233, 2,
+  { { "First zone ID", BYTES(1), RES_INTEGER, false, 0, "First Zone in this PGN" }
+  , { "Zone count", BYTES(1), RES_INTEGER, false, 0, "Number of Zones in this PGN" }
+  , { "Total zone count", BYTES(1), RES_INTEGER, false, 0, "Total Zones supported by this device" }
+  , { "Zone ID", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_ZONE, "" }
+  , { "Name", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  }
+}
+
 ,
 { "Small Craft Status", 130576, true, 2, 0,
   { { "Port trim tab", BYTES(1), 1, true, 0, "" }
@@ -3489,6 +3776,97 @@ Pgn pgnList[] =
   , { "Stern Speed, Water-referenced", BYTES(2), 0.001, true, "m/s", "" }
   , { "Stern Speed, Ground-referenced", BYTES(2), 0.001, true, "m/s", "" }
   , { 0 }
+  }
+}
+
+,
+{ "System Configuration", 130579, false, (48/8+2), 0,
+  { { "Power", 2, RES_LOOKUP, false, LOOKUP_YES_NO, "" }
+  , { "Default Settings", 2, RES_LOOKUP, false, ",0=Save current settings as user default,1=Load user default,2=Load Manufacturer default", "" }
+  , { "Tuner regions", 4, RES_LOOKUP, false, ",0=USA,1=Europe,2=Asia,3=Middle East,4=Latin America,5=Australia,6=Russia,7=Japan", "" }
+  , { "Max favorites", BYTES(1), RES_INTEGER, false, 0, "" }
+  , { "Video protocols", 4, RES_BITFIELD, false, ",0=PAL,1=NTSC", "" }
+  , { "Reserved", 44, RES_BINARY, false, 0, "Reserved" }
+  }
+}
+
+,
+{ "System Configuration (deprecated)", 130580, false, 2, 0,
+  { { "Power", 2, RES_LOOKUP, false, LOOKUP_YES_NO, "" }
+  , { "Default Settings", 2, RES_LOOKUP, false, ",0=Save current settings as user default,1=Load user default,2=Load Manufacturer default", "" }
+  , { "Tuner regions", 4, RES_LOOKUP, false, ",0=USA,1=Europe,2=Asia,3=Middle East,4=Latin America,5=Australia,6=Russia,7=Japan", "" }
+  , { "Max favorites", BYTES(1), RES_INTEGER, false, 0, "" }
+  }
+}
+
+,
+{ "Zone Configuration (deprecated)", 130581, false, 14, 2,
+  { { "First zone ID", BYTES(1), RES_INTEGER, false, 0, "First Zone in this PGN" }
+  , { "Zone count", BYTES(1), RES_INTEGER, false, 0, "Number of Zones in this PGN" }
+  , { "Total zone count", BYTES(1), RES_INTEGER, false, 0, "Total Zones supported by this device" }
+  , { "Zone ID", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_ZONE, "" }
+  , { "Zone name", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  }
+}
+
+,
+{ "Zone Volume", 130582, false, 4, 0,
+  { { "Zone ID", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_ZONE, "" }
+  , { "Volume", BYTES(1), RES_INTEGER, false, "%", "" }
+  , { "Volume change", 2, RES_LOOKUP, false, ",0=Up,1=Down", "Write only" }
+  , { "Mute", 2, RES_LOOKUP, false, LOOKUP_YES_NO, "" }
+  , { "Reserved", 4, RES_BINARY, false, 0, "Reserved" }
+  , { "Channel", 8, RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_CHANNEL, "" }
+  }
+}
+
+,
+{ "Available Audio EQ presets", 130583, false, 233, 2,
+  { { "First preset", BYTES(1), RES_INTEGER, false, 0, "First preset in this PGN" }
+  , { "Preset count", BYTES(1), RES_INTEGER, false, 0, "" }
+  , { "Total preset count", BYTES(1), RES_INTEGER, false, 0, "" }
+  , { "Preset type", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_EQ, "" }
+  , { "Preset name", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  }
+}
+
+,
+{ "Available Bluetooth addresses", 130584, false, 233, 3,
+  { { "First address", BYTES(1), RES_INTEGER, false, 0, "First address in this PGN" }
+  , { "Address count", BYTES(1), RES_INTEGER, false, 0, "" }
+  , { "Total address count", BYTES(1), RES_INTEGER, false, 0, "" }
+  , { "Bluetooth address", BYTES(6), RES_INTEGER, false, 0, "" }
+  , { "Status", BYTES(1), RES_LOOKUP, false, ",0=Connected,1=Not connected,2=Not paired", "" }
+  , { "Device name", BYTES(2), RES_STRINGLAU, false, 0, "" }
+  , { "Signal strength", BYTES(1), RES_INTEGER, false, "%", "" }
+  }
+}
+
+,
+{ "Bluetooth source status", 130585, false, 233, 0,
+  { { "Source number", BYTES(1), RES_INTEGER, false, 0, "" }
+  , { "Status", 4, RES_LOOKUP, false, ",0=Reserved,1=Connected,2=Connecting,3=Not connected", "" }
+  , { "Forget device", 2, RES_LOOKUP, false, LOOKUP_YES_NO, "" }
+  , { "Discovering", 2, RES_LOOKUP, false, LOOKUP_YES_NO, "" }
+  , { "Bluetooth address", BYTES(6), RES_INTEGER, false, 0, "" }
+  }
+}
+
+,
+{ "Zone Configuration", 130586, false, 14, 2,
+  { { "Zone ID", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_ZONE, "" }
+  , { "Volume limit", BYTES(1), RES_INTEGER, false, "%", "" }
+  , { "Fade", BYTES(1), RES_INTEGER, true, "%", "" }
+  , { "Balance", BYTES(1), RES_INTEGER, true, "%", "" }
+  , { "Sub volume", BYTES(1), RES_INTEGER, true, "%", "" }
+  , { "EQ - Treble", BYTES(1), RES_INTEGER, true, "%", "" }
+  , { "EQ - Mid range", BYTES(1), RES_INTEGER, true, "%", "" }
+  , { "EQ - Bass", BYTES(1), RES_INTEGER, true, "%", "" }
+  , { "Preset type", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_EQ, "" }
+  , { "Audio filter", BYTES(1), RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_FILTER, "" }
+  , { "High pass filter frequency", BYTES(2), RES_INTEGER, false, "Hz", "" }
+  , { "Low pass filter frequency", BYTES(2), RES_INTEGER, false, "Hz", "" }
+  , { "Channel", 8, RES_LOOKUP, false, LOOKUP_ENTERTAINMENT_CHANNEL, "" }
   }
 }
 
@@ -3955,7 +4333,7 @@ Pgn pgnList[] =
   , { "Industry Code", 3, RES_LOOKUP, false, "=4", "Marine Industry" }
   , { "Message ID", BYTES(1), 1, false, "=45", "Zone Name" }
   , { "A", BYTES(1), 1, false, 0, "" }
-  , { "Number", BYTES(1), 1, false, 0, "" }    
+  , { "Number", BYTES(1), 1, false, 0, "" }
   , { "Name", BYTES(13), RES_STRINGLZ, false, 0, "" }
   , { 0 }
   }

@@ -61,6 +61,7 @@ static int readonly = 0;
 static int writeonly = 0;
 static int passthru = 0;
 static long timeout = 0;
+static int outputCommands = 0;
 static bool isFile;
 
 enum MSG_State
@@ -128,6 +129,10 @@ int main(int argc, char ** argv)
       debug = 1;
       setLogLevel(LOGLEVEL_DEBUG);
     }
+    else if (strcasecmp(argv[1], "-o") == 0)
+    {
+      outputCommands = 1;
+    }
     else if (!device)
     {
       device = argv[1];
@@ -153,6 +158,7 @@ int main(int argc, char ** argv)
     "  -v      verbose\n"
     "  -d      debug\n"
     "  -t <n>  timeout, if no message is received after <n> seconds the program quits\n"
+    "  -o      output commands sent to stdin to the stdout \n"
     "  <device> can be a serial device, a normal file containing a raw log,\n"
     "  or the address of a TCP server in the format tcp://<host>[:<port>]\n"
     "\n" 
@@ -243,8 +249,11 @@ retry:
       {
         parseAndWriteIn(handle, msg);
       }
-      fprintf(stdout, "%s", msg);
-      fflush(stdout);
+      if ( outputCommands ) 
+      {
+        fprintf(stdout, "%s", msg);
+        fflush(stdout);
+      }
     }
     else if (writeonly)
     {
@@ -366,6 +375,7 @@ static void parseAndWriteIn(int handle, const unsigned char * cmd)
     return;
   }
 
+  logDebug("About to write:  %s\n", cmd);
   writeMessage(handle, N2K_MSG_SEND, msg, m - msg);
 }
 
@@ -387,6 +397,7 @@ static void writeMessage(int handle, unsigned char command, const unsigned char 
 {
   unsigned char bst[255];
   unsigned char *b = bst;
+  unsigned char *r = bst;
   unsigned char *lenPtr;
   unsigned char crc;
 
@@ -415,10 +426,34 @@ static void writeMessage(int handle, unsigned char command, const unsigned char 
   *b++ = DLE;
   *b++ = ETX;
 
-  if (write(handle, bst, b - bst) != b - bst)
+  int retryCount = 5;
+  int needs_written = b - bst;
+  int written;
+  do
+    {
+      written = write(handle, r, needs_written);
+      if ( written != -1 )
+	{
+	  r += written;
+	  needs_written -= written;
+	}
+      else if ( errno == EAGAIN )
+	{
+	  retryCount--;
+	  usleep(25000);
+	}
+      else
+        {
+          break;
+        }
+        
+    } while ( needs_written > 0 && retryCount >= 0 );
+
+  if ( written == -1 )
   {
     logError("Unable to write command '%.*s' to NGT-1-A device\n", (int) len, cmd);
   }
+
   logDebug("Written command %X len %d\n", command, (int) len);
 }
 
