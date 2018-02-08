@@ -247,6 +247,7 @@ int main(int argc, char ** argv)
   fillFieldCounts();
   checkPgnList();
 
+  // Here we go--start reading the input file and parsing/displaying the data
   while (fgets(msg, sizeof(msg) - 1, file))
   {
     RawMessage m;
@@ -376,25 +377,36 @@ char * getSep()
   return s;
 }
 
+/**
+ * Initialize the manufacturer array with all known NMEA 2000 manufacturers
+ */
 static void fillManufacturers(void)
 {
   size_t i;
 
+  // Initialize the list of manufacturer names (each string is empty)
   for (i = 0; i < ARRAY_SIZE(manufacturer); i++) {
     manufacturer[i] = 0;
   }
+
+  // Now populate the manufacturer list with known company names (indexed by id)
   for (i = 0; i < ARRAY_SIZE(companyList); i++)
   {
     manufacturer[companyList[i].id] = companyList[i].name;
   }
 }
 
+/**
+ * Count the number of fields defined for each element in pgnList and put the result in the pgnList fieldCount member
+ */
 static void fillFieldCounts(void)
 {
   size_t i, j;
 
+  // For each known PGN in the list
   for (i = 0; i < ARRAY_SIZE(pgnList); i++)
   {
+	  // Identify the fieldlist for this PGN
     for (j = 0; pgnList[i].fieldList[j].name && j < ARRAY_SIZE(pgnList[i].fieldList); j++);
     if (j == ARRAY_SIZE(pgnList[i].fieldList))
     {
@@ -406,6 +418,7 @@ static void fillFieldCounts(void)
       logError("Internal error: PGN %d '%s' does not have fields.\n", pgnList[i].pgn, pgnList[i].description);
       exit(2);
     }
+	// Populate the fieldCount member with the actual number of fields
     pgnList[i].fieldCount = j;
   }
 }
@@ -1437,6 +1450,12 @@ static void print_ascii_json_escaped(uint8_t *data, int len)
   }
 }
 
+/**
+ * Assemble and print a PGN packet (if it is complete)
+ * \param index - The PGN ID for this packet
+ * \param unknownIndex - 
+ * \param msg - The RawMessage object with information from the current frame
+ */
 void printPacket(size_t index, size_t unknownIndex, RawMessage * msg)
 {
   size_t fastPacketIndex;
@@ -1445,18 +1464,24 @@ void printPacket(size_t index, size_t unknownIndex, RawMessage * msg)
   Pgn * pgn = &pgnList[index];
   size_t subIndex;
 
+  /* Is this the first time we've seen a message from this device? If so, create a new object */
   if (!device[msg->src])
   {
     heapSize += sizeof(DevicePackets);
     logDebug("New device at address %u (heap %zu bytes)\n", msg->src, heapSize);
+
+	// Allocate memory for this new device object
     device[msg->src] = calloc(1, sizeof(DevicePackets));
     if (!device[msg->src])
     {
       die("Out of memory\n");
     }
   }
+
+  // Get a pointer to the packet for this device, this PGN ID
   packet = &(device[msg->src]->packetList[index]);
 
+  // Is this the first time we've seen this PGN ID from this device? If so, allocate space for the data
   if (!packet->data)
   {
     packet->allocSize = max(max(pgn->size, 8) + FASTPACKET_BUCKET_N_SIZE, msg->len);
@@ -1469,8 +1494,10 @@ void printPacket(size_t index, size_t unknownIndex, RawMessage * msg)
     }
   }
 
+  // Is this a long message that will require special handling?
   if (msg->len > 0x8 || format != RAWFORMAT_PLAIN)
   {
+	  // Do we need to allocate more space to accommodate the data? If so, do it
     if (packet->allocSize < msg->len)
     {
       heapSize += msg->len - packet->allocSize;
@@ -1482,19 +1509,24 @@ void printPacket(size_t index, size_t unknownIndex, RawMessage * msg)
       }
       packet->allocSize = msg->len;
     }
+
+	// Copy the RawMessage data into the packet data area
     memcpy( packet->data
           , msg->data
           , msg->len
           );
     packet->size = msg->len;
   }
-  else if (pgn->size > 0x8)
+  else if (pgn->size > 0x8)	// Is this a fastpacket (that can't be sent in 8 bytes)?
   {
+	  // Get the fast packet index value from the RawMessage data buffer and 
+	  // figure out which bucket it will go into
     fastPacketIndex = msg->data[FASTPACKET_INDEX];
     bucket = fastPacketIndex & FASTPACKET_MAX_INDEX;
 
     if (bucket == 0)
     {
+		/* Ensure that the packet data buffer is large enough to hold all of the data */
       size_t newSize = ((size_t) msg->data[FASTPACKET_SIZE]) + FASTPACKET_BUCKET_N_SIZE;
 
       if (packet->allocSize < newSize)
@@ -1508,6 +1540,8 @@ void printPacket(size_t index, size_t unknownIndex, RawMessage * msg)
         }
         packet->allocSize = newSize;
       }
+
+	  // Set the size variable and copy the RawMessage data into the Packet object data field
       packet->size = msg->data[FASTPACKET_SIZE];
       memcpy( packet->data
             , msg->data + FASTPACKET_BUCKET_0_OFFSET
@@ -1528,8 +1562,10 @@ void printPacket(size_t index, size_t unknownIndex, RawMessage * msg)
             , FASTPACKET_BUCKET_N_SIZE
             );
     }
+	/* keep track of the last fast packet index received */
     packet->lastFastPacket = fastPacketIndex;
 
+	/* Check to see if we've completely assembled the packet */
     if (FASTPACKET_BUCKET_0_SIZE + FASTPACKET_BUCKET_N_SIZE * bucket < packet->size)
     {
       /* Packet is not complete yet */
@@ -1538,6 +1574,7 @@ void printPacket(size_t index, size_t unknownIndex, RawMessage * msg)
   }
   else /* msg->len <= 8 && pgn->size <= 0x8 */
   {
+	  /* This is a simple, one-frame PGN */
     packet->size = msg->len;
     memcpy( packet->data
           , msg->data
@@ -1545,6 +1582,7 @@ void printPacket(size_t index, size_t unknownIndex, RawMessage * msg)
           );
   }
 
+  /* Print the fully assembled packet */
   printPgn(msg, packet->data, packet->size, showData, showJson);
 }
 
@@ -1553,31 +1591,39 @@ bool printCanFormat(RawMessage * msg)
   size_t i;
   size_t unknownIndex = 0;
 
+  /* If the output is supposed to be filtered by the message source and the source doesn't match
+   * the desired source id, just return
+   */
   if (onlySrc >=0 && onlySrc != msg->src)
   {
     return false;
   }
 
+  /* Search through the pgnList for this message's entry */
   for (i = 0; i < ARRAY_SIZE(pgnList); i++)
   {
+	  /* Check to see if this is a matching PGN ID */
     if (msg->pgn == pgnList[i].pgn)
     {
+		/* If the output is supposed to be filtered by the PGN ID, we need to check further */
       if (onlyPgn)
       {
+		  /* Does the PGN ID match the filter? */
         if (msg->pgn == onlyPgn)
         {
+			/* It does, so print the PGN packet and return */
           printPacket(i, unknownIndex, msg);
           return true;
         }
+		/* It does not match the filter, so keep looking */
         continue;
       }
       if (!pgnList[i].size)
       {
         return true; /* We have field names, but no field sizes. */
       }
-      /*
-       * Found the pgn that matches this particular packet
-       */
+
+      /* Found the pgn that matches this particular packet */
       printPacket(i, unknownIndex, msg);
       return true;
     }
@@ -1592,6 +1638,7 @@ bool printCanFormat(RawMessage * msg)
   }
   if (!onlyPgn)
   {
+	  /* print the packet */
     printPacket(unknownIndex, unknownIndex, msg);
   }
   return onlyPgn > 0;
@@ -1966,6 +2013,14 @@ void explainXML(void)
     "</PGNDefinitions>\n");
 }
 
+/**
+ * Print a fully assembled PGN packet
+ * \param msg - The most recent frame received
+ * \param dataStart - The buffer holding the PGN packet data
+ * \param length - The number of bytes in the dataStart buffer
+ * \param showData - If true, show the data bytes
+ * \param showJson - If true, show as JSON
+ */
 bool printPgn(RawMessage* msg, uint8_t *dataStart, int length, bool showData, bool showJson) {
   Pgn *pgn;
 
@@ -1992,8 +2047,11 @@ bool printPgn(RawMessage* msg, uint8_t *dataStart, int length, bool showData, bo
   if (!msg) {
     return false;
   }
+
+  /* Get the PGN definition object corresponding to this packet */
   pgn  = getMatchingPgn(msg->pgn, dataStart, length);
   if (!pgn) {
+	  /* if not found, use the default entry (index 0) */
     pgn = pgnList;
   }
 
@@ -2007,6 +2065,7 @@ bool printPgn(RawMessage* msg, uint8_t *dataStart, int length, bool showData, bo
       f = stderr;
     }
 
+	/* Show the PGN timestamp, source, dest, id, description and hex values */
     fprintf(f, "%s %u %3u %3u %6u %s: ", msg->timestamp, msg->prio, msg->src, msg->dst, msg->pgn, pgn->description);
     for (i = 0; i < length; i++)
     {
@@ -2014,6 +2073,7 @@ bool printPgn(RawMessage* msg, uint8_t *dataStart, int length, bool showData, bo
     }
     putc('\n', f);
 
+	/* Show the same, interpreted as ASCII */
     fprintf(f, "%s %u %3u %3u %6u %s: ", msg->timestamp, msg->prio, msg->src, msg->dst, msg->pgn, pgn->description);
     for (i = 0; i < length; i++)
     {

@@ -131,25 +131,36 @@ Pgn* getMatchingPgn(int pgnId, uint8_t *dataStart, int length)
   return 0;
 }
 
+/**
+ * Confirm that the PGN descriptors in Pgn.h are correctly formatted and sorted
+ */
 void checkPgnList(void)
 {
   size_t i;
   int prn = 0;
 
+  // For each PGN in the pgnList
   for (i = 0; i < pgnListSize; i++)
   {
     Pgn * pgn;
 
+	// Check to be certain that this PGN ID is larger than any already processed
     if (pgnList[i].pgn < prn)
     {
       logError("Internal error: PGN %d is not sorted correctly\n", pgnList[i].pgn);
       exit(2);
     }
+
+	// Continue to loop if the PGN ID is the same as the last one
     if (pgnList[i].pgn == prn)
     {
       continue;
     }
+
+	// Set a new "maximum" PGN ID
     prn = pgnList[i].pgn;
+
+	// Make certain that we can successfully search for it with searchForPgn
     pgn = searchForPgn(prn);
     if (pgn != &pgnList[i])
     {
@@ -300,6 +311,9 @@ static char * findFirstOccurrence(char * msg, char c)
   return strchr(msg, c);
 }
 
+/**
+ * Set the parsed values from the input stream in the RawMessage object
+ */
 static int setParsedValues(RawMessage * m, unsigned int prio, unsigned int pgn, unsigned int dst, unsigned int src, unsigned int len)
 {
   m->prio = prio;
@@ -311,6 +325,12 @@ static int setParsedValues(RawMessage * m, unsigned int prio, unsigned int pgn, 
   return 0;
 }
 
+/**
+ * Parse an incoming plain frame (less than 8 bytes)
+ * \param msg - The information as read from the stream [IN]
+ * \param m - The raw message as parsed [OUT]
+ * \param showJson - Display a JSON description of the packet [IN]
+ */
 int parseRawFormatPlain(char * msg, RawMessage * m, bool showJson)
 {
   unsigned int prio, pgn, dst, src, len, junk, r, i;
@@ -323,6 +343,7 @@ int parseRawFormatPlain(char * msg, RawMessage * m, bool showJson)
     return 1;
   }
 
+  /* Store the timestamp in RawMessage */
   memcpy(m->timestamp, msg, p - msg);
   m->timestamp[p - msg] = 0;
 
@@ -352,6 +373,7 @@ int parseRawFormatPlain(char * msg, RawMessage * m, bool showJson)
     return 2;
   }
 
+  /* Store data bytes in RawMessage */
   if (r <= 5 + 8)
   {
     for (i = 0; i < len; i++)
